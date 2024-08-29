@@ -40,16 +40,10 @@ var db *sql.DB
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /todo", test)
-	mux.HandleFunc("POST /todo", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{"message": "POST"})
-	})
-	mux.HandleFunc("PUT /todo", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{"message": "PUT"})
-	})
-	mux.HandleFunc("DELETE /todo", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]string{"message": "DELETE"})
-	})
+	mux.HandleFunc("GET /todo", getTodo)
+	mux.HandleFunc("POST /todo", createTodo)
+	mux.HandleFunc("PUT /todo", updateTodo)
+	mux.HandleFunc("DELETE /todo", deleteTodo)
 
 	fmt.Println("Server is running on port 8080...")
 	err := http.ListenAndServe(":8080", mux)
@@ -58,11 +52,7 @@ func main() {
 	}
 }
 
-func test(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(map[string]string{"message": "GET"})
-}
-
-func getTodo(w http.ResponseWriter, r *http.Request) {
+func getTodo(w http.ResponseWriter, _ *http.Request) {
 	var todos []Todo
 	cmd := `SELECT * FROM todos`
 
@@ -87,4 +77,19 @@ func getTodo(w http.ResponseWriter, r *http.Request) {
 	// NewEncoder()の引数内にエンコーダーを作成
 	// Encode()の引数を実際にエンコードする
 	json.NewEncoder(w).Encode(todos)
+}
+
+func createTodo(w http.ResponseWriter, r *http.Request) {
+	json, _ := json.Marshal(r.Body)
+	fmt.Println(json)
+}
+
+func updateTodo(w http.ResponseWriter, r *http.Request) {
+	json, _ := json.Marshal(r.Body)
+	fmt.Println(json)
+}
+
+func deleteTodo(w http.ResponseWriter, r *http.Request) {
+	json, _ := json.Marshal(r.Body)
+	fmt.Println(json)
 }
