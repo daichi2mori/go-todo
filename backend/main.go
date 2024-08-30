@@ -11,9 +11,9 @@ import (
 )
 
 type Todo struct {
-	ID      int    `json:"id"`
-	Content string `json:"content"`
-	Done    bool   `json:"done"`
+	ID        int    `json:"id"`
+	Content   string `json:"content"`
+	Completed bool   `json:"completed"`
 }
 
 var db *sql.DB
@@ -28,8 +28,8 @@ func init() {
 	createTable := `
 	CREATE TABLE IF NOT EXISTS todos (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		content TEXT,
-		Completed BOOLEAN
+		content TEXT NOT NULL,
+		completed BOOLEAN NOT NULL
 	);`
 
 	_, err = db.Exec(createTable)
@@ -58,15 +58,18 @@ func getTodo(w http.ResponseWriter, _ *http.Request) {
 
 	rows, err := db.Query(cmd)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	for rows.Next() {
 		var todo Todo
-		err = rows.Scan(&todo.ID, &todo.Content, &todo.Done)
+		err = rows.Scan(&todo.ID, &todo.Content, &todo.Completed)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		todos = append(todos, todo)
 	}
@@ -80,8 +83,30 @@ func getTodo(w http.ResponseWriter, _ *http.Request) {
 }
 
 func createTodo(w http.ResponseWriter, r *http.Request) {
-	json, _ := json.Marshal(r.Body)
-	fmt.Println(json)
+	var todo Todo
+	err := json.NewDecoder(r.Body).Decode(&todo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if todo.Content == "" {
+		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	cmd := `INSERT INTO todos (content, completed) VALUES (?, ?)`
+	_, err = db.Exec(cmd, todo.Content, todo.Completed)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to create Todo", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Todo created successfully"})
 }
 
 func updateTodo(w http.ResponseWriter, r *http.Request) {
