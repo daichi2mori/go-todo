@@ -18,25 +18,25 @@ type Todo struct {
 
 var db *sql.DB
 
-// func init() {
-// 	var err error
-// 	db, err = sql.Open("sqlite3", "todos.db")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+func init() {
+	var err error
+	db, err = sql.Open("sqlite3", "todos.db")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-// 	createTable := `
-// 	CREATE TABLE IF NOT EXISTS todos (
-// 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-// 		content TEXT,
-// 		Completed BOOLEAN
-// 	);`
+	createTable := `
+	CREATE TABLE IF NOT EXISTS todos (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		content TEXT,
+		Completed BOOLEAN
+	);`
 
-// 	_, err = db.Exec(createTable)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
+	_, err = db.Exec(createTable)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func main() {
 	mux := http.NewServeMux()
