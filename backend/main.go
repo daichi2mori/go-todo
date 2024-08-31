@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -43,7 +44,7 @@ func main() {
 	mux.HandleFunc("GET /todo", getTodo)
 	mux.HandleFunc("POST /todo", createTodo)
 	mux.HandleFunc("PUT /todo", updateTodo)
-	mux.HandleFunc("DELETE /todo", deleteTodo)
+	mux.HandleFunc("DELETE /todo/{id}", deleteTodo)
 
 	fmt.Println("Server is running on port 8080...")
 	err := http.ListenAndServe(":8080", mux)
@@ -52,7 +53,7 @@ func main() {
 	}
 }
 
-func getTodo(w http.ResponseWriter, _ *http.Request) {
+func getTodo(w http.ResponseWriter, r *http.Request) {
 	var todos []Todo
 	cmd := `SELECT * FROM todos`
 
@@ -110,11 +111,70 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateTodo(w http.ResponseWriter, r *http.Request) {
-	json, _ := json.Marshal(r.Body)
-	fmt.Println(json)
+	var todo Todo
+	err := json.NewDecoder(r.Body).Decode(&todo)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if todo.ID == 0 {
+		http.Error(w, "Invalid or missing ID", http.StatusBadRequest)
+		return
+	}
+
+	if todo.Content == "" {
+		http.Error(w, "Content cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	cmd := `UPDATE todos SET content = ?, completed = ? WHERE id = ?`
+	_, err = db.Exec(cmd, todo.Content, todo.Completed, todo.ID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to update Todo", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Todo updated successfully"})
 }
 
 func deleteTodo(w http.ResponseWriter, r *http.Request) {
-	json, _ := json.Marshal(r.Body)
-	fmt.Println(json)
+	// URLパスからIDを取得
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	// IDがデータベースに存在するか確認
+	var exists bool
+	cmd := "SELECT EXISTS(SELECT 1 FROM todos WHERE id = ?)"
+	err = db.QueryRow(cmd, id).Scan(&exists)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to check existence of Todo", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Todo not found", http.StatusNotFound)
+		return
+	}
+
+	// データベースから削除
+	cmd = `DELETE FROM todos WHERE id = ?`
+	_, err = db.Exec(cmd, id)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to delete Todo", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Todo deleted successfully"})
 }
