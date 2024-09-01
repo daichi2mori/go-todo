@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/cors"
 )
 
 type Todo struct {
@@ -46,8 +47,18 @@ func main() {
 	mux.HandleFunc("PUT /todo", updateTodo)
 	mux.HandleFunc("DELETE /todo/{id}", deleteTodo)
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},                             // すべてのオリジンを許可
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},  // 許可するHTTPメソッド
+		AllowedHeaders:   []string{"Content-Type", "Authorization"}, // 許可するリクエストヘッダー
+		AllowCredentials: true,                                      /// クッキーなどの資格情報を含めるか
+	})
+
+	// corsミドルウェアをServeMuxに適用
+	handler := c.Handler(mux)
+
 	fmt.Println("Server is running on port 8080...")
-	err := http.ListenAndServe(":8080", mux)
+	err := http.ListenAndServe(":8080", handler)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
